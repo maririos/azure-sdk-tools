@@ -19,7 +19,7 @@ namespace identity_resolver
         /// <param name="kustoDatabaseVar">Kusto DB environment variable name</param>
         /// <param name="kustoTableVar">Kusto Table environment variable name</param>
         /// <param name="identity">The full name of the employee</param>
-        /// <param name="vsoVariable">The name of DevOps output variable.</param>
+        /// <param name="vsoVariable">The name of DevOps output variable</param>
         /// <returns></returns>
         public static async Task Main(
             string aadAppIdVar,

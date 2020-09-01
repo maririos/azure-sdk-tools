@@ -37,24 +37,35 @@ namespace identity_resolver
             using (var loggerFactory = new LoggerFactory().AddConsole(includeScopes: true))
 #pragma warning restore CS0618 // Type or member is obsolete
             {
-                var githubNameResolver = new GitHubNameResolver(
-                    Environment.GetEnvironmentVariable(aadAppIdVar),
-                    Environment.GetEnvironmentVariable(aadAppSecretVar),
-                    Environment.GetEnvironmentVariable(aadTenantVar),
-                    Environment.GetEnvironmentVariable(kustoUrlVar),
-                    Environment.GetEnvironmentVariable(kustoDatabaseVar),
-                    Environment.GetEnvironmentVariable(kustoTableVar),
-                    loggerFactory.CreateLogger<GitHubNameResolver>()
-                );
+                try {
+                    var githubNameResolver = new GitHubNameResolver(
+                        Environment.GetEnvironmentVariable(aadAppIdVar),
+                        Environment.GetEnvironmentVariable(aadAppSecretVar),
+                        Environment.GetEnvironmentVariable(aadTenantVar),
+                        Environment.GetEnvironmentVariable(kustoUrlVar),
+                        Environment.GetEnvironmentVariable(kustoDatabaseVar),
+                        Environment.GetEnvironmentVariable(kustoTableVar),
+                        loggerFactory.CreateLogger<GitHubNameResolver>()
+                    );
 
-                var result = await githubNameResolver.GetMappingInformationFromAADName(identity);
+                    var result = await githubNameResolver.GetMappingInformationFromAADName(identity);
 
 
-                if (!String.IsNullOrEmpty(vsoVariable))
-                {
-                    Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", vsoVariable, result.GithubUserName));
+                    if (!String.IsNullOrEmpty(vsoVariable))
+                    {
+                        Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", vsoVariable, result.GithubUserName));
+                    }
+                    Console.Write(JsonConvert.SerializeObject(result));
                 }
-                Console.Write(JsonConvert.SerializeObject(result));
+                catch(Exception) {
+                    Console.WriteLine(String.Format("Unable to resolve identity for name ", identity));
+                }
+                finally {
+                    if (!String.IsNullOrEmpty(vsoVariable))
+                    {
+                        Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", vsoVariable, ""));
+                    }
+                }
             }
         }
     }

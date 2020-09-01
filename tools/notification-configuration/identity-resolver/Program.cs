@@ -55,8 +55,7 @@ namespace identity_resolver
 
                     if (!String.IsNullOrEmpty(targetvar))
                     {
-                        Console.Write("##");
-                        Console.WriteLine(String.Format("vso[task.setvariable variable={0};]{1}", targetvar, result.GithubUserName));
+                        Console.WriteLine(String.Format("!##vso[task.setvariable variable={0};]{1}", targetvar, result.GithubUserName));
                         Console.WriteLine("I'm in the function, but output is obviously HORKED");
                     }
                     Console.WriteLine(JsonConvert.SerializeObject(result));

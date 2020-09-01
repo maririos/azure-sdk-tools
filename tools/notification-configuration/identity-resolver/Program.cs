@@ -54,7 +54,6 @@ namespace identity_resolver
 
                     var result = await githubNameResolver.GetMappingInformationFromAADName(identity);
 
-
                     if (!String.IsNullOrEmpty(targetvar))
                     {
                         logger.LogInformation(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, result.GithubUserName));
@@ -62,15 +61,13 @@ namespace identity_resolver
                     }
                     Console.WriteLine(JsonConvert.SerializeObject(result));
                 }
-                catch(Exception) {
-                    Console.WriteLine(String.Format("Unable to resolve identity for name ", identity));
-                }
-                finally {
+                catch(Exception e) {
                     if (!String.IsNullOrEmpty(targetvar))
                     {
-                        logger.LogInformation(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, ""));
                         Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, ""));
                     }
+
+                    throw e;
                 }
             }
         }

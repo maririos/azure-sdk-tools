@@ -37,6 +37,10 @@ namespace identity_resolver
             using (var loggerFactory = new LoggerFactory().AddConsole(includeScopes: true))
 #pragma warning restore CS0618 // Type or member is obsolete
             {
+                var logger = loggerFactory.CreateLogger<Program>();
+                Console.WriteLine(targetvar);
+                Console.WriteLine(identity);
+
                 try {
                     var githubNameResolver = new GitHubNameResolver(
                         Environment.GetEnvironmentVariable(aadAppIdVar),
@@ -53,9 +57,10 @@ namespace identity_resolver
 
                     if (!String.IsNullOrEmpty(targetvar))
                     {
+                        logger.LogInformation(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, result.GithubUserName));
                         Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, result.GithubUserName));
                     }
-                    Console.Write(JsonConvert.SerializeObject(result));
+                    Console.WriteLine(JsonConvert.SerializeObject(result));
                 }
                 catch(Exception) {
                     Console.WriteLine(String.Format("Unable to resolve identity for name ", identity));
@@ -63,6 +68,7 @@ namespace identity_resolver
                 finally {
                     if (!String.IsNullOrEmpty(targetvar))
                     {
+                        logger.LogInformation(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, ""));
                         Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, ""));
                     }
                 }

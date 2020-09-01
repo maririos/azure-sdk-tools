@@ -19,7 +19,7 @@ namespace identity_resolver
         /// <param name="kustoDatabaseVar">Kusto DB environment variable name</param>
         /// <param name="kustoTableVar">Kusto Table environment variable name</param>
         /// <param name="identity">The full name of the employee</param>
-        /// <param name="vsoVariable">The name of DevOps output variable</param>
+        /// <param name="targetvar">The name of DevOps output variable</param>
         /// <returns></returns>
         public static async Task Main(
             string aadAppIdVar,
@@ -29,7 +29,7 @@ namespace identity_resolver
             string kustoDatabaseVar,
             string kustoTableVar,
             string identity,
-            string vsoVariable
+            string targetvar
             )
         {
 
@@ -51,9 +51,9 @@ namespace identity_resolver
                     var result = await githubNameResolver.GetMappingInformationFromAADName(identity);
 
 
-                    if (!String.IsNullOrEmpty(vsoVariable))
+                    if (!String.IsNullOrEmpty(targetvar))
                     {
-                        Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", vsoVariable, result.GithubUserName));
+                        Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, result.GithubUserName));
                     }
                     Console.Write(JsonConvert.SerializeObject(result));
                 }
@@ -61,9 +61,9 @@ namespace identity_resolver
                     Console.WriteLine(String.Format("Unable to resolve identity for name ", identity));
                 }
                 finally {
-                    if (!String.IsNullOrEmpty(vsoVariable))
+                    if (!String.IsNullOrEmpty(targetvar))
                     {
-                        Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", vsoVariable, ""));
+                        Console.WriteLine(String.Format("##vso[task.setvariable variable={0};]{1}", targetvar, ""));
                     }
                 }
             }

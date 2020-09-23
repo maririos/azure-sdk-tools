@@ -18,7 +18,9 @@ param (
   # the substitute branch name or SHA commit
   [string] $branchReplacementName = "",
   # flag to allow checking against azure sdk link guidance.
-  [bool] $checkLinkGuidance = $false
+  [bool] $checkLinkGuidance = $false,
+  [int] $hostThrottleInMilliseconds = 500,
+  [string[]] $hostsToThrottle = @("github.com", "www.nuget.org", "www.npmjs.com")
 )
 
 $ProgressPreference = "SilentlyContinue"; # Disable invoke-webrequest progress dialog
@@ -125,7 +127,7 @@ function ParseLinks([string]$baseUri, [string]$htmlContent)
   #$hrefs | Foreach-Object { Write-Host $_ }
 
   Write-Verbose "Found $($hrefs.Count) raw href's in page $baseUri";
-  $links = $hrefs | ForEach-Object { ResolveUri $baseUri $_.Groups["href"].Value } | Sort-Object -Unique
+  $links = $hrefs | ForEach-Object { ResolveUri $baseUri $_.Groups["href"].Value }
 
   #$links | Foreach-Object { Write-Host $_ }
 
@@ -152,6 +154,19 @@ function CheckLink ([System.Uri]$linkUri)
   }
   else {
     try {
+      if ($hostThrottle.ContainsKey($linkUri.Host))
+      {
+        $lastRequest = [DateTime]$hostThrottle[$linkUri.Host]
+        $timeSinceLast = ([DateTime]::Now - $lastRequest).TotalMilliseconds
+        $sleepTime = $hostThrottleInMilliseconds - $timeSinceLast
+        if ($sleepTime -gt 0)
+        {
+          Write-Verbose "Sleeping for $sleepTime milliseconds for host $($linkUri.Host)"
+          # Sleep before trying the next request to this host
+          Start-Sleep -Milliseconds $sleepTime
+        }
+      }
+
       $headRequestSucceeded = $true
       try {
         # Attempt HEAD request first
@@ -189,6 +204,12 @@ function CheckLink ([System.Uri]$linkUri)
           Write-Host "Exception while requesting $linkUri"
           Write-Host $_.Exception.ToString()
         }
+      }
+    }
+    finally
+    {
+      if ($hostsToThrottle.Count -eq 0 -or $hostsToThrottle.Contains($linkUri.Host)) {
+        $hostThrottle[$linkUri.Host] = [DateTime]::Now
       }
     }
   }
@@ -266,6 +287,7 @@ if (Test-Path $ignoreLinksFile)
   $ignoreLinks = [Array](Get-Content $ignoreLinksFile | ForEach-Object { ($_ -replace "#.*", "").Trim() } | Where-Object { $_ -ne "" })
 }
 
+$hostThrottle = @{};
 $checkedPages = @{};
 $checkedLinks = @{};
 $badLinks = @{};

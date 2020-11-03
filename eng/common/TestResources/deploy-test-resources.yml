@@ -1,9 +1,10 @@
 parameters:
   ServiceDirectory: not-set
-  ArmTemplateParameters: '@{}'
+  ArmTemplateParameters: '$subscriptionConfiguration.ArmTemplateParameters'
   DeleteAfterHours: 24
   Location: ''
   SubscriptionConfiguration: $(sub-config-azure-cloud-test-resources)
+  Platform: ''
 
 # SubscriptionConfiguration will be splat into the parameters of the test
 # resources script. It should be JSON in the form:
@@ -38,26 +39,32 @@ steps:
   - pwsh: |
       eng/common/TestResources/Import-AzModules.ps1
 
-      $subscriptionConfiguration = @"
+      $subscriptionConfiguration = @'
         ${{ parameters.SubscriptionConfiguration }}
-      "@ | ConvertFrom-Json -AsHashtable;
+      '@ | ConvertFrom-Json -AsHashtable;
 
-      if ($subscriptionConfiguration.ArmTemplateParameters) {
-        # Handle subscription configuration containing arm template parameters
-        $armTemplateParameters = $subscriptionConfiguration.ArmTemplateParameters
-      } else {
-        # Handle legacy subscription configuration, with arm template params passed in by templates
-        $armTemplateParameters = ${{ parameters.ArmTemplateParameters }}
+      if (!$subscriptionConfiguration.ArmTemplateParameters) {
+        $subscriptionConfiguration.ArmTemplateParameters = @{}
       }
 
-      $accessParameters = @{
-        "SubscriptionId" = $subscriptionConfiguration.SubscriptionId;
-        "TenantId" = $subscriptionConfiguration.TenantId;
-        "TestApplicationId" = $subscriptionConfiguration.TestApplicationId;
-        "TestApplicationSecret" = $subscriptionConfiguration.TestApplicationSecret;
-        "ProvisionerApplicationId" = $subscriptionConfiguration.ProvisionerApplicationId;
-        "ProvisionerApplicationSecret" = $subscriptionConfiguration.ProvisionerApplicationSecret;
-        "Environment" = $subscriptionConfiguration.Environment
+      $armTemplateParameters = @'
+        ${{ parameters.ArmTemplateParameters }}
+      '@ | ConvertFrom-Json -AsHashtable;
+
+      # 1. Support legacy ArmTemplateParameters passed in directly as a hashmap:
+      #      @{ 'param1' = 'foo' ; 'param2' = 'bar' }
+      # 2. Support additional sdk pipeline and/or platform specific arm template parameters:
+      #      @{
+      #        'param1' = ${ value = 'foo' ; platform = 'bar' } ;
+      #        'param2' = ${ value = 'baz' } ;
+      #       )
+      # 3. For duplicate keys, prefer the template/script parameter over the keyvault subscriptionConfiguration.
+      if ($armTemplateParameters) {
+        foreach $($p in $(ArmTemplateParameters).GetEnumerator()) {
+          if (!$p.Value.platform -or $p.Value.Platform -eq '${{ parameters.Platform }}') {
+            $subscriptionConfiguration.ArmTemplateParameters[$p.name] = $p.Value
+          }
+        }
       }
 
       eng/common/TestResources/New-TestResources.ps1 `
@@ -65,8 +72,7 @@ steps:
         -ServiceDirectory ${{ parameters.ServiceDirectory }} `
         -Location '${{ parameters.Location }}' `
         -DeleteAfterHours ${{ parameters.DeleteAfterHours }} `
-        -AdditionalParameters $armTemplateParameters `
-        @accessParameters `
+        @subscriptionConfiguration
         -CI `
         -Force `
         -Verbose | Out-Null
